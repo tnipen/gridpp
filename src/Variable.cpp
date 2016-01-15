@@ -47,6 +47,8 @@ std::string Variable::getTypeName(Type iType) {
       return "LwinAcc";
    else if(iType == SwinAcc)
       return "SwinAcc";
+   else if(iType == Symbol)
+      return "Symbol";
    else if(iType == Fake)
       return "Fake";
    else
@@ -98,6 +100,8 @@ Variable::Type Variable::getType(std::string iName) {
       return SwinAcc;
    else if(iName == "LwinAcc")
       return LwinAcc;
+   else if(iName == "Symbol")
+      return Symbol;
    else if(iName == "Fake")
       return Fake;
    else
@@ -128,6 +132,7 @@ std::string Variable::getDescriptions() {
    ss << Util::formatDescription("-v QNH", "Pressure reduced to sea-level using standard atmosphere (ICAO)") << std::endl;
    ss << Util::formatDescription("-v SwinAcc", "Accumulated incoming shortwave radiation") << std::endl;
    ss << Util::formatDescription("-v LwinAcc", "Accumulated incoming longwave radiation") << std::endl;
+   ss << Util::formatDescription("-v Symbol", "Weather symbol") << std::endl;
    return ss.str();
 }
 
@@ -157,6 +162,7 @@ std::vector<Variable::Type> Variable::getAllVariables() {
    variables.push_back(Variable::QNH);
    variables.push_back(Variable::LwinAcc);
    variables.push_back(Variable::SwinAcc);
+   variables.push_back(Variable::Symbol);
    // Do not include Variable::NONE;
    return variables;
 }
@@ -207,6 +213,8 @@ float Variable::getMin(Type iType) {
          return Util::MV;
       case SwinAcc:
          return Util::MV;
+      case Symbol:
+         return 0;
       default:
          return Util::MV;
    }
@@ -258,6 +266,8 @@ float Variable::getMax(Type iType) {
          return Util::MV;
       case SwinAcc:
          return Util::MV;
+      case Symbol:
+         return 100;
       default:
          return Util::MV;
    }
@@ -308,6 +318,8 @@ std::string Variable::getUnits(Type iType) {
          return "W s/m^2";
       case SwinAcc:
          return "W s/m^2";
+      case Symbol:
+         return "no_units";
       default:
          return "no_units";
    }
@@ -361,7 +373,9 @@ std::string Variable::getStandardName(Type iType) {
          return "integral_of_surface_downwelling_shortwave_flux_in_air_wrt_time";
       case LwinAcc:
          return "integral_of_surface_downwelling_longwave_flux_in_air_wrt_time";
+      case Symbol:
+         return "unknown";
       default:
-         return "no_units";
+         return "unknown";
    }
 }
