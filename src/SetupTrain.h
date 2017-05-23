@@ -1,5 +1,5 @@
-#ifndef METCAL_SETUP_H
-#define METCAL_SETUP_H
+#ifndef METCAL_SETUP_TRAIN_H
+#define METCAL_SETUP_TRAIN_H
 #include <string>
 #include <vector>
 #include "Variable.h"
@@ -7,7 +7,6 @@
 class Calibrator;
 class Downscaler;
 class ParameterFile;
-class TrainingData;
 class File;
 
 //! Represents what post-processing method should be trained. Includes which data file to

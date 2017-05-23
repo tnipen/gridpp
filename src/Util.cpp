@@ -18,6 +18,7 @@ namespace Cglob {
 #include <fstream>
 #include <istream>
 #include <iomanip>
+#include <cstdio>
 
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/vector_proxy.hpp>
@@ -35,6 +36,7 @@ float Util::pi  = 3.14159265;
 double Util::radiusEarth = 6.378137e6;
 
 void Util::error(std::string iMessage) {
+#ifdef DEBUG
    if(mShowError) {
       std::cout << "Error: " << iMessage << std::endl;
       void *array[10];
@@ -42,8 +44,11 @@ void Util::error(std::string iMessage) {
       std::cout << "Stack trace:" << std::endl;
       backtrace_symbols_fd(array, size, 2);
    }
-#ifdef DEBUG
    __gcov_flush();
+#else
+   if(mShowError) {
+      std::cout << "Error: " << iMessage << std::endl;
+   }
 #endif
    abort();
 }
@@ -121,14 +126,18 @@ float Util::rad2deg(float rad) {
    return (rad * 180 / Util::pi);
 }
 std::vector<std::string> Util::glob(std::string iFilenames) {
-   std::vector<std::string> files;
-   int flags = 0;
-   Cglob::glob_t results;
-   Cglob::glob(iFilenames.c_str(), flags, NULL, &results);
-   for(int i = 0; i < results.gl_pathc; i++) {
-      files.push_back(results.gl_pathv[i]);
+   // Split on commas
+   std::vector<std::string> returnFiles;
+   std::vector<std::string> files = Util::split(iFilenames, ",");
+   for(int k = 0; k < files.size(); k++) {
+      int flags = GLOB_TILDE | GLOB_NOMAGIC;
+      Cglob::glob_t results;
+      Cglob::glob(files[k].c_str(), flags, NULL, &results);
+      for(int i = 0; i < results.gl_pathc; i++) {
+         returnFiles.push_back(results.gl_pathv[i]);
+      }
    }
-   return files;
+   return returnFiles;
 }
 
 std::string Util::gridppVersion() {
@@ -209,13 +218,26 @@ int Util::calcDate(int iDate, float iAddHours) {
    return returnDate;
 }
 
-std::vector<std::string> Util::split(std::string iString) {
+std::vector<std::string> Util::split(std::string iString, std::string iDelims) {
    std::vector<std::string> strings;
-   std::stringstream ss(iString);
-   std::string currString;
-   while(ss >> currString) {
-      strings.push_back(currString);
+
+   // Skip delimiters at beginning.
+   std::string::size_type lastPos = iString.find_first_not_of(iDelims, 0);
+
+   // Find first non-delimiter.
+   std::string::size_type pos = iString.find_first_of(iDelims, lastPos);
+
+   while(std::string::npos != pos || std::string::npos != lastPos) {
+      // Found a string
+      strings.push_back(iString.substr(lastPos, pos - lastPos));
+
+      // Skip delimiters
+      lastPos = iString.find_first_not_of(iDelims, pos);
+
+      // Find next non-delimiter.
+      pos = iString.find_first_of(iDelims, lastPos);
    }
+
    return strings;
 }
 float Util::logit(float p) {
@@ -244,6 +266,11 @@ bool Util::copy(std::string iFrom, std::string iTo) {
    source.close();
    dest.close();
    return true;
+}
+
+bool Util::remove(std::string iFilename) {
+   bool failure = std::remove(iFilename.c_str());
+   return !failure;
 }
 
 std::string Util::formatDescription(std::string iTitle, std::string iMessage, int iTitleLength, int iMaxLength, int iTitleIndent) {

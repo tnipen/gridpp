@@ -15,8 +15,12 @@ class Variable {
          PrecipLow    = 4,    // Low estimate of precipitation
          PrecipMiddle = 5,    // Middle estimate of precipitation
          PrecipHigh   = 6,    // High estimate of precipitation
+         PrecipRate   = 7,    // Precipitation rate
          Cloud        = 10,   // Cloud cover (between 0 and 1)
          T            = 20,   // 2m temperature (K)
+         TMin         = 21,   // 2m temperature minimum temperature (K)
+         TMax         = 22,   // 2m temperature maximum temperature (K)
+         TD           = 23,   // 2m dew point temperature (K)
          U            = 30,   // 10m U-wind (m/s)
          Xwind        = 31,   // 10m X-wind (m/s)
          V            = 40,   // 10m V-wind (m/s)

@@ -10,18 +10,23 @@
 
 ParameterFileNetcdf::ParameterFileNetcdf(const Options& iOptions, bool iIsNew) : ParameterFile(iOptions, iIsNew),
       mDimName("coeff"),
-      mVarName("coefficient") {
+      mVarName("coefficient"),
+      mInDefineMode(false) {
    iOptions.getValue("dimName", mDimName);
    iOptions.getValue("varName", mVarName);
 
    if(iIsNew) {
       int status = nc_create(getFilename().c_str(), NC_NETCDF4, &mFile);
       handleNetcdfError(status, "Could not write file");
+      mInDefineMode = true; // New files are in define mode when created
+      endDefineMode();
       return;
    }
 
    int status = nc_open(getFilename().c_str(), NC_NOWRITE, &mFile);
    handleNetcdfError(status, "Could not read file");
+   mInDefineMode = false;
+   endDefineMode();
 
    int dTime = getTimeDim(mFile);
    int dLon  = getLonDim(mFile);
@@ -31,7 +36,6 @@ ParameterFileNetcdf::ParameterFileNetcdf(const Options& iOptions, bool iIsNew) :
    int nLat   = getDimSize(mFile, dLat);
    int nLon   = getDimSize(mFile, dLon);
    int nCoeff = getDimSize(mFile, dCoeff);
-
 
    // TODO: Deal with case where lat and lon are one-dimensional variables
    // Get latitudes
@@ -79,19 +83,16 @@ ParameterFileNetcdf::ParameterFileNetcdf(const Options& iOptions, bool iIsNew) :
    int totalNumParameters = nLat*nLon*nTime*nCoeff;
    float* values = getNcFloats(mFile, var);
 
-   // Intitialize parameters to empty and then fill in later
-   std::vector<float> params(nCoeff, Util::MV);
-   Parameters parameters(params);
-   for(int t = 0; t < nTime; t++) {
-      int time = t;
-      for(int i = 0; i < nLat; i++) {
-         for(int j = 0; j < nLon; j++) {
-            int locIndex = i * nLon + j;
-            Location location(lats[i][j], lons[i][j], elevs[i][j]);
-            mParameters[location][time] = parameters;
-         }
+   // Initialize parameters to empty and then fill in later
+   std::vector<Location> locations;
+   for(int i = 0; i < nLat; i++) {
+      for(int j = 0; j < nLon; j++) {
+         int locIndex = i * nLon + j;
+         Location location(lats[i][j], lons[i][j], elevs[i][j]);
+         locations.push_back(location);
       }
    }
+   initializeEmpty(locations, nTime, nCoeff);
 
    /*
    Read parameters from file and arrange them in mParameters. This is a bit tricky because we do not
@@ -143,6 +144,7 @@ ParameterFileNetcdf::ParameterFileNetcdf(const Options& iOptions, bool iIsNew) :
 
    // Loop over the parameters placing them into the right position
    int index = 0;
+   Parameters par;
    while(index < totalNumParameters) {
       float currParameter = values[index];
       // Translate the linear index into a vector index
@@ -159,13 +161,21 @@ ParameterFileNetcdf::ParameterFileNetcdf(const Options& iOptions, bool iIsNew) :
 
       Location location(lats[i][j], lons[i][j], elevs[i][j]);
 
+      // TODO: Only insert when parameters are valid
       // Assign parameter
       mParameters[location][timeIndex][coeffIndex] = currParameter;
+      if(timeIndex > 0)
+         setIsTimeDependent(true);
+      setMaxTime(std::max(getMaxTime(), timeIndex));
       index++;
    }
 
    delete[] values;
    delete[] times;
+
+   endDefineMode();
+
+   recomputeTree();
 }
 
 ParameterFileNetcdf::~ParameterFileNetcdf() {
@@ -259,17 +269,25 @@ std::string ParameterFileNetcdf::description() {
    return ss.str();
 }
 void ParameterFileNetcdf::write() const {
+   startDefineMode();
    std::vector<Location> locations = getLocations();
    std::vector<int> times = getTimes();
    if(times.size() == 0 || locations.size() == 0) {
       Util::error("Cannot write parameter file '" + getFilename() + "'. No data to write.");
    }
-   Parameters par0 = getParameters(times[0], locations[0]);
+   int nCoeff = 0;
+   for(int i = 0; i < times.size(); i++) {
+      Parameters par0 = getParameters(times[i], locations[0], false);
+      nCoeff = std::max(nCoeff, par0.size());
+   }
+
+   if(nCoeff == 0) {
+      Util::error("Cannot write a parameter file where all parameters are missing");
+   }
 
    int nTime = times.size();
    int nLon = 1;
    int nLat = locations.size();
-   int nCoeff = par0.size();
 
    // Create dimensions
    int dTime = createDim(mFile, "time", nTime);
@@ -296,24 +314,27 @@ void ParameterFileNetcdf::write() const {
    status = nc_def_var(mFile, "time", NC_FLOAT, 1, &dTime, &vTime);
    handleNetcdfError(status, "could not define time");
 
-   status = ncendef(mFile);
-   handleNetcdfError(status, "could not put into data mode");
+   endDefineMode();
 
    double s = Util::clock();
+   float* lats  = new float[locations.size()];
+   float* lons  = new float[locations.size()];
+   float* elevs = new float[locations.size()];
    // Write locations
    for(int i = 0; i < locations.size(); i++) {
-      size_t countGrid[2] = {1, 1};
-      size_t startGrid[2] = {i, 0};
-      float lat = locations[i].lat();
-      float lon = locations[i].lon();
-      float elev = locations[i].elev();
-      status = nc_put_vara_float(mFile, vLat, startGrid, countGrid, &lat);
-      handleNetcdfError(status, "could not write latitude");
-      status = nc_put_vara_float(mFile, vLon, startGrid, countGrid, &lon);
-      handleNetcdfError(status, "could not write longitude");
-      status = nc_put_vara_float(mFile, vElev, startGrid, countGrid, &elev);
-      handleNetcdfError(status, "could not write altitude");
+      lats[i] = locations[i].lat();
+      lons[i] = locations[i].lon();
+      elevs[i] = locations[i].elev();
    }
+   status = nc_put_var_float(mFile, vLat, lats);
+   handleNetcdfError(status, "could not write latitude");
+   delete[] lats;
+   status = nc_put_var_float(mFile, vLon, lons);
+   handleNetcdfError(status, "could not write longitude");
+   delete[] lons;
+   status = nc_put_var_float(mFile, vElev, elevs);
+   handleNetcdfError(status, "could not write altitude");
+   delete[] elevs;
 
    // Write times
    int* timesAr = new int[nTime];
@@ -334,13 +355,21 @@ void ParameterFileNetcdf::write() const {
    for(int t = 0; t < times.size(); t++) {
       int time = times[t];
       for(int i = 0; i < locations.size(); i++) {
-         Parameters par = getParameters(times[t], locations[i]);
-         if(par.size() != nCoeff) {
-            Util::error("Wrong parameter size");
+         Parameters par = getParameters(times[t], locations[i], false);
+         if(par.size() == nCoeff) {
+            for(int k = 0; k < nCoeff; k++) {
+               int index = t * nLat * nCoeff + i * nCoeff + k;
+               values[index] = par[k];
+            }
          }
-         for(int k = 0; k < nCoeff; k++) {
-            int index = t * nLat * nCoeff + i * nCoeff + k;
-            values[index] = par[k];
+         else if(par.size() == 0) {
+            for(int k = 0; k < nCoeff; k++) {
+               int index = t * nLat * nCoeff + i * nCoeff + k;
+               values[index] = Util::MV;
+            }
+         }
+         else {
+            Util::error("Wrong parameter size");
          }
       }
    }
@@ -537,4 +566,20 @@ vec2 ParameterFileNetcdf::getGridValues(int iFile, int iVar) const {
       delete[] values;
    }
    return grid;
+}
+void ParameterFileNetcdf::startDefineMode() const {
+   if(!mInDefineMode) {
+      // Only call redefine if we went into data mode at some point
+      int status = ncredef(mFile);
+      handleNetcdfError(status, "could not put into define mode");
+      mInDefineMode = true;
+   }
+}
+void ParameterFileNetcdf::endDefineMode() const {
+   if(mInDefineMode) {
+      // Only end define mode if we at some point entered
+      int status = ncendef(mFile);
+      handleNetcdfError(status, "could not put into data mode");
+      mInDefineMode = false;
+   }
 }

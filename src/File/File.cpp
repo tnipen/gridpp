@@ -8,7 +8,7 @@
 #include "../Options.h"
 Uuid File::mNextTag = 0;
 
-File::File(std::string iFilename) :
+File::File(std::string iFilename, const Options& iOptions) :
       mFilename(iFilename),
       mReferenceTime(Util::MV) {
    createNewTag();
@@ -41,10 +41,10 @@ File* File::getScheme(std::string iFilename, const Options& iOptions, bool iRead
       }
    }
    else if(type == "arome") {
-      file = new FileArome(iFilename, iReadOnly);
+      file = new FileArome(iFilename, iOptions, iReadOnly);
    }
    else if(type == "ec") {
-      file = new FileEc(iFilename, iReadOnly);
+      file = new FileEc(iFilename, iOptions, iReadOnly);
    }
    else if(type == "point") {
       file = new FilePoint(iFilename, iOptions);
@@ -76,15 +76,19 @@ FieldPtr File::getField(Variable::Type iVariable, int iTime) const {
       needsReading = mFields[iVariable][iTime] == NULL;
    }
    else {
+      if(getNumTime() <= iTime) {
+         std::stringstream ss;
+         ss << "Attempted to access variable '" << Variable::getTypeName(iVariable) << "' for time " << iTime
+            << " in file '" << getFilename() << "'";
+         Util::error(ss.str());
+      }
       mFields[iVariable].resize(getNumTime());
    }
 
    if(needsReading) {
       // Load non-derived variable from file
       if(hasVariableCore(iVariable)) {
-         for(int t = 0; t < getNumTime(); t++) {
-            mFields[iVariable][t] = getFieldCore(iVariable, t);
-         }
+         mFields[iVariable][iTime] = getFieldCore(iVariable, iTime);
       }
       // Try to derive the field
       else if(iVariable == Variable::Precip) {
@@ -158,7 +162,9 @@ FieldPtr File::getField(Variable::Type iVariable, int iTime) const {
                      for(int e = 0; e < getNumEns(); e++) {
                         float currU = (*u)(lat,lon,e);
                         float currV = (*v)(lat,lon,e);
-                        (*windSpeed)(lat,lon,e) = sqrt(currU*currU + currV*currV);
+                        if(Util::isValid(currU) && Util::isValid(currV)) {
+                           (*windSpeed)(lat,lon,e) = sqrt(currU*currU + currV*currV);
+                        }
                      }
                   }
                }
@@ -175,7 +181,9 @@ FieldPtr File::getField(Variable::Type iVariable, int iTime) const {
                      for(int e = 0; e < getNumEns(); e++) {
                         float currX = (*x)(lat,lon,e);
                         float currY = (*y)(lat,lon,e);
-                        (*windSpeed)(lat,lon,e) = sqrt(currX*currX + currY*currY);
+                        if(Util::isValid(currX) && Util::isValid(currY)) {
+                           (*windSpeed)(lat,lon,e) = sqrt(currX*currX + currY*currY);
+                        }
                      }
                   }
                }
@@ -197,10 +205,12 @@ FieldPtr File::getField(Variable::Type iVariable, int iTime) const {
                      for(int e = 0; e < getNumEns(); e++) {
                         float currU = (*u)(lat,lon,e);
                         float currV = (*v)(lat,lon,e);
-                        float dir = std::atan2(-currU,-currV) * 180 / Util::pi;
-                        if(dir < 0)
-                           dir += 360;
-                        (*windDir)(lat,lon,e) = dir;
+                        if(Util::isValid(currU) && Util::isValid(currV)) {
+                           float dir = std::atan2(-currU,-currV) * 180 / Util::pi;
+                           if(dir < 0)
+                              dir += 360;
+                           (*windDir)(lat,lon,e) = dir;
+                        }
                      }
                   }
                }
@@ -217,10 +227,12 @@ FieldPtr File::getField(Variable::Type iVariable, int iTime) const {
                      for(int e = 0; e < getNumEns(); e++) {
                         float currX = (*x)(lat,lon,e);
                         float currY = (*y)(lat,lon,e);
-                        float dir = std::atan2(-currX,-currY) * 180 / Util::pi;
-                        if(dir < 0)
-                           dir += 360;
-                        (*windDir)(lat,lon,e) = dir;
+                        if(Util::isValid(currX) && Util::isValid(currY)) {
+                           float dir = std::atan2(-currX,-currY) * 180 / Util::pi;
+                           if(dir < 0)
+                              dir += 360;
+                           (*windDir)(lat,lon,e) = dir;
+                        }
                      }
                   }
                }
@@ -325,7 +337,17 @@ bool File::hasVariable(Variable::Type iVariable) const {
       return (hasVariableCore(Variable::V) && hasVariableCore(Variable::U)) ||
              (hasVariableCore(Variable::Xwind) && hasVariableCore(Variable::Ywind));
    }
-   
+
+   // Check if field has been initialized
+   std::map<Variable::Type, std::vector<FieldPtr> >::const_iterator it = mFields.find(iVariable);
+   return it != mFields.end();
+}
+
+bool File::hasVariableWithoutDeriving(Variable::Type iVariable) const {
+   bool status = hasVariableCore(iVariable);
+   if(status)
+      return true;
+
    // Check if field has been initialized
    std::map<Variable::Type, std::vector<FieldPtr> >::const_iterator it = mFields.find(iVariable);
    return it != mFields.end();

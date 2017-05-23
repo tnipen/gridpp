@@ -1,16 +1,16 @@
 #ifndef FILE_AROME_H
 #define FILE_AROME_H
-#include <netcdf.hh>
 #include <vector>
 #include <map>
 #include <boost/shared_ptr.hpp>
 #include "Netcdf.h"
 #include "../Variable.h"
+#include "../Options.h"
 
 //! Represents a Netcdf data file
 class FileArome : public FileNetcdf {
    public:
-      FileArome(std::string iFilename, bool iReadOnly=false);
+      FileArome(std::string iFilename, const Options& iOptions=Options(), bool iReadOnly=false);
       ~FileArome();
 
       std::string getVariableName(Variable::Type iVariable) const;
@@ -23,11 +23,14 @@ class FileArome : public FileNetcdf {
       void writeCore(std::vector<Variable::Type> iVariables);
       FieldPtr getFieldCore(Variable::Type iVariable, int iTime) const;
       FieldPtr getFieldCore(std::string iVariable, int iTime) const;
+      // Must be one of "latitude", "longitude", or "altitude"
       vec2 getLatLonVariable(std::string iVariable) const;
       void writeLatLonVariable(std::string iVariable);
       void defineLatLonVariable(std::string iVariable);
       int mDate;
-      std::string getXname() const;
-      std::string getYname() const;
+      std::string mXName;
+      std::string mYName;
+      std::string mLatName;
+      std::string mLonName;
 };
 #endif

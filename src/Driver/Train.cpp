@@ -8,7 +8,6 @@
 #include "../Util.h"
 #include "../Options.h"
 #include "../SetupTrain.h"
-#include "../TrainingData.h"
 void writeUsage() {
    std::cout << "Trains a calibration method in gridpp using observations and forecast files. The resulting parameter file is on the same grid as the forecasts and observations will be interpolated to the forecast grid using nearest neighbour." << std::endl;
    std::cout << std::endl;
@@ -55,12 +54,13 @@ int main(int argc, const char *argv[]) {
 
    File* forecast = setup.forecasts[0];
    File* observation = setup.observations[0];
-   int nLat = forecast->getNumLat();
-   int nLon = forecast->getNumLon();
-   int nTime = forecast->getNumTime();
-   vec2 lats = forecast->getLats();
-   vec2 lons = forecast->getLons();
-   vec2 elevs = forecast->getElevs();
+   File* ogrid = observation;
+   int nLat = ogrid->getNumLat();
+   int nLon = ogrid->getNumLon();
+   int nTime = ogrid->getNumTime();
+   vec2 lats = ogrid->getLats();
+   vec2 lons = ogrid->getLons();
+   vec2 elevs = ogrid->getElevs();
 
    Variable::Type variable = setup.variable;
    std::vector<double> offsets = forecast->getTimes();
@@ -108,8 +108,11 @@ int main(int argc, const char *argv[]) {
       return -1;
    }
 
-   vec2Int I, J;
-   Downscaler::getNearestNeighbour(*observation, *forecast, I, J);
+   // vec2Int Io2f, Jo2f;
+   // Downscaler::getNearestNeighbour(*observation, *forecast, Io2f, Jo2f);
+   vec2Int If2o, Jf2o;
+   Downscaler::getNearestNeighbour(*forecast, *observation, If2o, Jf2o);
+   std::cout << "Created nearest neighbour map" << std::endl;
    std::vector<double> ftimes = forecast->getTimes();
    std::vector<double> otimes = observation->getTimes();
    double freftime = forecast->getReferenceTime();
@@ -126,18 +129,32 @@ int main(int argc, const char *argv[]) {
    }
    std::cout << std::endl;
 
-   // If multiple available obstimes, then use the one with the lowest ftime
    for(int t = 0; t < offsets.size(); t++) {
+      double time0 = Util::clock();
       std::cout << "Forecast time index: " << t << std::endl;
+      // If multiple available obstimes, then use the one with the lowest ftime
       double ftime = ftimes[t] - freftime;
       int fTimeIndex = t;
       int oTimeIndex = Util::MV;
       int fmaxDays = ftimes[ftimes.size()-1] / 86400;
+
+      /*
+      // Use the same leadtime in obs and forecast (probably not optimal obs for
+      // leadtimes above 24h)
+      for(int tt = 0; tt < otimes.size(); tt++) {
+         double otime = otimes[tt] - oreftime;
+         if(otime == ftime) {
+            oTimeIndex = tt;
+            break;
+         }
+      }
+      */
+
       for(int d = 0; d < fmaxDays; d++) {
          // Find appropriate obs time
          for(int tt = 0; tt < otimes.size(); tt++) {
             double otime = otimes[tt] - oreftime + d * 86400;
-            if(otime == ftime) {
+            if(otime == ftime && (t == 0 || tt != 0)) {
                oTimeIndex = tt;
                break;
             }
@@ -194,8 +211,10 @@ int main(int argc, const char *argv[]) {
                std::vector<ObsEns> data;
                for(int d = 0; d < ffields.size(); d++){
                   // Downscaling (currently nearest neighbour)
-                  float obs = (*ofields[d])(I[i][j],J[i][j],0);
-                  const Ens& ens = (*ffields[d])(i,j);
+                  // float obs = (*ofields[d])(Io2f[i][j],Jo2f[i][j],0);
+                  // const Ens& ens = (*ffields[d])(i,j);
+                  float obs = (*ofields[d])(i,j,0);
+                  Ens ens   = (*ffields[d])(If2o[i][j],Jf2o[i][j]);
                   ObsEns obsens(obs, ens);
                   data.push_back(obsens);
                }
@@ -224,8 +243,10 @@ int main(int argc, const char *argv[]) {
             for(int j = 0; j < nLon; j++) {
                for(int d = 0; d < ffields.size(); d++){
                   // Downscaling (currently nearest neighbour)
-                  float obs = (*ofields[d])(I[i][j],J[i][j],0);
-                  const Ens& ens = (*ffields[d])(i,j);
+                  // float obs = (*ofields[d])(Io2f[i][j],Jo2f[i][j],0);
+                  // const Ens& ens = (*ffields[d])(i,j);
+                  float obs = (*ofields[d])(i,j,0);
+                  Ens ens   = (*ffields[d])(If2o[i][j],Jf2o[i][j]);
                   if(Util::isValid(obs) && Util::isValid(ens[0])) {
                      ObsEns obsens(obs, ens);
                      data.push_back(obsens);
@@ -237,7 +258,23 @@ int main(int argc, const char *argv[]) {
          Parameters par = setup.method->train(data);
          setup.output->setParameters(par, t, Location(Util::MV, Util::MV, Util::MV));
       }
+
+      // Clear the memory of the files
+      // for(int f = 0; f < ofields.size(); f++) {
+      //    ofields[f].reset();
+      // }
+      for(int f = 0; f < setup.forecasts.size(); f++) {
+         setup.forecasts[f]->clear();
+      }
+      for(int f = 0; f < setup.observations.size(); f++) {
+         setup.observations[f]->clear();
+      }
+
+      double time1 = Util::clock();
+      std::cout << "   Time: " << time1 - time0 << " seconds" << std::endl;
    }
+   std::cout << "Recomputing nearest neighbour tree" << std::endl;
+   setup.output->recomputeTree();
 
    std::cout << "Writing to parameter file" << std::endl;
    setup.output->write();

@@ -7,6 +7,8 @@
 #include "../Parameters.h"
 #include "../Location.h"
 #include "../File/File.h"
+// TODO: if a location has missing parameters for some hours but not others, then
+// the missing values are returned, not the nearest neighbours values.
 class ParameterFileNetcdf : public ParameterFile {
    public:
       ParameterFileNetcdf(const Options& iOptions, bool iIsNew=false);
@@ -53,5 +55,9 @@ class ParameterFileNetcdf : public ParameterFile {
       vec2 getGridValues(int iFile, int iVariable) const;
 
       int mFile;
+
+      void startDefineMode() const;
+      void endDefineMode() const;
+      mutable bool mInDefineMode;
 };
 #endif

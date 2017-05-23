@@ -1,11 +1,11 @@
 #ifndef FILE_EC_H
 #define FILE_EC_H
-#include <netcdf.hh>
 #include <vector>
 #include <map>
 #include <boost/shared_ptr.hpp>
 #include "Netcdf.h"
 #include "../Variable.h"
+#include "../Options.h"
 
 //! Represents an ensemble Netcdf data file from ECMWF
 //! Must have:
@@ -17,7 +17,7 @@
 //!    5 dimensional variables (time, *, ensemble_member, <lat dim>, <lon dim>)
 class FileEc : public FileNetcdf {
    public:
-      FileEc(std::string iFilename, bool iReadOnly=false);
+      FileEc(std::string iFilename, const Options& iOptions=Options(), bool iReadOnly=false);
 
       std::string getVariableName(Variable::Type iVariable) const;
       static bool isValid(std::string iFilename);
@@ -26,9 +26,12 @@ class FileEc : public FileNetcdf {
    protected:
       void writeCore(std::vector<Variable::Type> iVariables);
       FieldPtr getFieldCore(Variable::Type iVariable, int iTime) const;
+      FieldPtr getFieldCore(std::string iVariable, int iTime) const;
 
       std::vector<int> mTimes;
       vec2 getGridValues(int iVariable) const;
+      void writeAltitude() const;
+      void defineAltitude();
       int getLatDim() const;
       int getLonDim() const;
       int getLatVar() const;

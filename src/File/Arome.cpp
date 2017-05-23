@@ -1,18 +1,50 @@
 #include "Arome.h"
 #include <math.h>
+#include <netcdf.h>
 #include <assert.h>
 #include <stdlib.h>
 #include "../Util.h"
 
-FileArome::FileArome(std::string iFilename, bool iReadOnly) : FileNetcdf(iFilename, iReadOnly) {
+FileArome::FileArome(std::string iFilename, const Options& iOptions, bool iReadOnly) : FileNetcdf(iFilename, iOptions, iReadOnly),
+      mXName(""),
+      mYName(""),
+      mLatName("latitude"),
+      mLonName("longitude") {
+
+   iOptions.getValue("lat", mLatName);
+   iOptions.getValue("lon", mLonName);
+
+   if(!iOptions.getValue("x", mXName)) {
+      if(hasDim("x"))
+         mXName = "x";
+      else if(hasDim("longitude"))
+         mXName = "longitude";
+      else if(hasDim("rlon"))
+         mXName = "rlon";
+      else {
+         Util::error("Cannot determine x dimension");
+      }
+   }
+   if(!iOptions.getValue("y", mYName)) {
+      if(hasDim("y"))
+         mYName = "y";
+      else if(hasDim("latitude"))
+         mYName = "latitude";
+      else if(hasDim("rlat"))
+         mYName = "rlat";
+      else {
+         Util::error("Cannot determine y dimension");
+      }
+   }
+
    // Set dimensions
    mNTime = getDimSize("time");
-   mNLat  = getDimSize(getYname());
-   mNLon  = getDimSize(getXname());
+   mNLat  = getDimSize(mYName);
+   mNLon  = getDimSize(mXName);
    mNEns  = 1;
 
-   mLats = getLatLonVariable("latitude");
-   mLons = getLatLonVariable("longitude");
+   mLats = getLatLonVariable(mLatName);
+   mLons = getLatLonVariable(mLonName);
    if(hasVar("surface_geopotential")) {
       FieldPtr elevField = getFieldCore("surface_geopotential", 0);
       mElevs.resize(getNumLat());
@@ -159,10 +191,20 @@ void FileArome::writeCore(std::vector<Variable::Type> iVariables) {
    // to avoid swapping between define and data mode unnecessarily
    startDefineMode();
 
+   // check if altitudes are valid
+   bool isAltitudeValid = false;
+   vec2 elevs = getElevs();
+   for(int i = 0; i < elevs.size(); i++) {
+      for(int j = 0; j < elevs[i].size(); j++) {
+         isAltitudeValid = isAltitudeValid || Util::isValid(elevs[i][j]);
+      }
+   }
+
    // Define lat/lon/elev
-   defineLatLonVariable("latitude");
-   defineLatLonVariable("longitude");
-   defineLatLonVariable("altitude");
+   defineLatLonVariable(mLatName);
+   defineLatLonVariable(mLonName);
+   if(isAltitudeValid)
+      defineLatLonVariable("altitude");
 
    // Define variables (< 0.01 s)
    for(int v = 0; v < iVariables.size(); v++) {
@@ -171,8 +213,8 @@ void FileArome::writeCore(std::vector<Variable::Type> iVariables) {
       if(!hasVariableCore(varType)) {
          // Create variable
          int dTime    = getDim("time");
-         int dLon     = getDim(getXname());
-         int dLat     = getDim(getYname());
+         int dLon     = getDim(mXName);
+         int dLat     = getDim(mYName);
          int dims[3]  = {dTime, dLat, dLon};
          int var = Util::MV;
          int status = nc_def_var(mFile,variable.c_str(), NC_FLOAT, 3, dims, &var);
@@ -180,7 +222,9 @@ void FileArome::writeCore(std::vector<Variable::Type> iVariables) {
       }
       int var = getVar(variable);
       float MV = getMissingValue(var); // The output file's missing value indicator
-      setAttribute(var, "coordinates", "longitude latitude");
+      std::stringstream ss;
+      ss << mLonName << " " << mLatName;
+      setAttribute(var, "coordinates", ss.str());
       setAttribute(var, "units", Variable::getUnits(varType));
       setAttribute(var, "standard_name", Variable::getStandardName(varType));
       setMissingValue(var, MV);
@@ -192,7 +236,8 @@ void FileArome::writeCore(std::vector<Variable::Type> iVariables) {
    startDataMode(); // 0.5 seconds
    writeReferenceTime();
    writeTimes(); // 2-3 seconds
-   writeLatLonVariable("altitude");
+   if(isAltitudeValid)
+      writeLatLonVariable("altitude");
    for(int v = 0; v < iVariables.size(); v++) {
       Variable::Type varType = iVariables[v];
       std::string variable = getVariableName(varType);
@@ -265,6 +310,9 @@ std::string FileArome::getVariableName(Variable::Type iVariable) const {
    else if(iVariable == Variable::T) {
       return "air_temperature_2m";
    }
+   else if(iVariable == Variable::TD) {
+      return "dew_point_temperature_2m";
+   }
    else if(iVariable == Variable::Precip) {
       return "precipitation_amount";
    }
@@ -282,6 +330,9 @@ std::string FileArome::getVariableName(Variable::Type iVariable) const {
    }
    else if(iVariable == Variable::PrecipHigh) {
       return "precipitation_amount_high_estimate";
+   }
+   else if(iVariable == Variable::PrecipRate) {
+      return "lwe_precipitation_rate";
    }
    else if(iVariable == Variable::U) {
       return "eastward_wind_10m";
@@ -344,41 +395,76 @@ vec2 FileArome::getLatLonVariable(std::string iVar) const {
    int numDims;
    int status = nc_inq_varndims(mFile, var, &numDims);
    handleNetcdfError(status, "could not determine number of dimensions for variable " + iVar);
-   float* values = new float[getNumLon()*getNumLat()];
-   if(numDims == 2) {
-      status = nc_get_var_float(mFile, var, values);
-      handleNetcdfError(status, "could not get data from variable " + iVar);
-   }
-   else if(numDims == 4) {
-      size_t count[4] = {1,1,getNumLat(),getNumLon()};
-      size_t start[4] = {0,0,0,0};
-      int status = nc_get_vara_float(mFile, var, start, count, values);
-      handleNetcdfError(status, "could not get data from variable " + iVar);
-   }
-   else {
-      Util::error("Cannot read " + iVar + " from AROME file. Must have either 2 or 4 dimensions");
-   }
+   // Initialize grid
    vec2 grid;
    grid.resize(getNumLat());
    for(int i = 0; i < getNumLat(); i++) {
       grid[i].resize(getNumLon());
-      for(int j = 0; j < getNumLon(); j++) {
-         int index = i*getNumLon() + j;
-         float value = values[index];
-         if(values[index] == MV)
-            value = Util::MV;
-         grid[i][j] = value;
-         assert(index < getNumLon()*getNumLat());
-      }
    }
-   delete[] values;
+
+   if(numDims == 1) {
+      // Figure out if this vector has the dimension of lat or lon
+      int dLon     = getDim(mXName);
+      int dLat     = getDim(mYName);
+      int dim;
+      int status = nc_inq_vardimid(mFile, var, &dim);
+      float* values;
+      if(dim == dLon)
+         values = new float[getNumLon()];
+      else if(dim == dLat)
+         values = new float[getNumLat()];
+      else
+         Util::error("Could not load " + iVar + ". Variables does not have lat or lon dimensions");
+
+      status = nc_get_var_float(mFile, var, values);
+      handleNetcdfError(status, "could not get data from variable " + iVar);
+
+      for(int i = 0; i < getNumLat(); i++) {
+         for(int j = 0; j < getNumLon(); j++) {
+            float value = Util::MV;
+            if(dim == dLon)
+               value = values[j];
+            else
+               value = values[i];
+            grid[i][j] = value;
+         }
+      }
+      delete[] values;
+   }
+   else {
+      float* values = new float[getNumLon()*getNumLat()];
+      if(numDims == 2) {
+         status = nc_get_var_float(mFile, var, values);
+         handleNetcdfError(status, "could not get data from variable " + iVar);
+      }
+      else if(numDims == 4) {
+         size_t count[4] = {1,1,getNumLat(),getNumLon()};
+         size_t start[4] = {0,0,0,0};
+         int status = nc_get_vara_float(mFile, var, start, count, values);
+         handleNetcdfError(status, "could not get data from variable " + iVar);
+      }
+      else {
+         Util::error("Cannot read " + iVar + " from AROME file. Must have either 1, 2 or 4 dimensions");
+      }
+      for(int i = 0; i < getNumLat(); i++) {
+         for(int j = 0; j < getNumLon(); j++) {
+            int index = i*getNumLon() + j;
+            float value = values[index];
+            if(values[index] == MV)
+               value = Util::MV;
+            grid[i][j] = value;
+            assert(index < getNumLon()*getNumLat());
+         }
+      }
+      delete[] values;
+   }
    return grid;
 }
 void FileArome::defineLatLonVariable(std::string iVar) {
    if(!hasVar(iVar)) {
       // Create variable
-      int dLon     = getDim(getXname());
-      int dLat     = getDim(getYname());
+      int dLon     = getDim(mXName);
+      int dLat     = getDim(mYName);
       int dims[2]  = {dLat, dLon};
       int var = Util::MV;
       int status = nc_def_var(mFile, iVar.c_str(), NC_FLOAT, 2, dims, &var);
@@ -401,16 +487,17 @@ void FileArome::writeLatLonVariable(std::string iVar) {
    // Assign values
    float* values = new float[getNumLon()*getNumLat()];
    vec2 grid;
-   grid.resize(getNumLat());
+   if(iVar == "latitude")
+      grid = getLats();
+   else if(iVar == "longitude")
+      grid = getLons();
+   else if(iVar == "altitude")
+      grid = getElevs();
    for(int i = 0; i < getNumLat(); i++) {
-      grid[i].resize(getNumLon());
       for(int j = 0; j < getNumLon(); j++) {
          int index = i*getNumLon() + j;
-         float value = values[index];
-         if(values[index] == MV)
-            value = Util::MV;
-         grid[i][j] = value;
-         assert(index < getNumLon()*getNumLat());
+         float value = grid[i][j];
+         values[index] = value;
       }
    }
 
@@ -445,27 +532,17 @@ bool FileArome::isValid(std::string iFilename) {
                (hasDim(file, "y") || hasDim(file, "rlat")) &&
                !hasDim(file, "ensemble_member") &&
                hasVar(file, "latitude") && hasVar(file, "longitude");
+      nc_close(file);
    }
-   nc_close(file);
    return isValid;
 }
 
 std::string FileArome::description() {
    std::stringstream ss;
    ss << Util::formatDescription("type=arome", "AROME file") << std::endl;
+   ss << Util::formatDescription("   lat=latitude", "Name of the variable representing latitudes") << std::endl;
+   ss << Util::formatDescription("   lon=longitude", "Name of the variable representing longitudes") << std::endl;
+   ss << Util::formatDescription("   x=undef", "Name of dimension in the x-direction. If unspecified, the name is auto-detected.") << std::endl;
+   ss << Util::formatDescription("   y=undef", "Name of dimension in the y-direction. If unspecified, the name is auto-detected.") << std::endl;
    return ss.str();
-}
-
-std::string FileArome::getXname() const {
-   std::string xname = "x";
-   if(!hasDim(xname))
-      xname = "rlon";
-   return xname;
-}
-
-std::string FileArome::getYname() const {
-   std::string yname = "y";
-   if(!hasDim(yname))
-      yname = "rlat";
-   return yname;
 }

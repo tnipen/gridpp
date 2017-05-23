@@ -1,6 +1,5 @@
 #ifndef FILE_NETCDF_H
 #define FILE_NETCDF_H
-#include <netcdf.h>
 #include <vector>
 #include <map>
 #include <boost/shared_ptr.hpp>
@@ -10,7 +9,7 @@
 //! Represents a Netcdf data file
 class FileNetcdf : public File {
    public:
-      FileNetcdf(std::string iFilename, bool iReadOnly=false);
+      FileNetcdf(std::string iFilename, const Options& iOptions, bool iReadOnly=false);
       ~FileNetcdf();
 
       virtual std::string getVariableName(Variable::Type iVariable) const = 0;
@@ -71,6 +70,7 @@ class FileNetcdf : public File {
       void startDefineMode() const;
       void startDataMode() const;
       mutable bool mInDataMode;
+      const static int mMaxAttributeLength = 100000000;
 };
 #include "Ec.h"
 #include "Arome.h"

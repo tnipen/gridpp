@@ -19,7 +19,8 @@ bool CalibratorAltitude::calibrateCore(File& iFile, const ParameterFile* iParame
    #pragma omp parallel for
    for(int i = 0; i < nLat; i++) {
       for(int j = 0; j < nLon; j++) {
-         Location loc = iParameterFile->getNearestLocation(0, Location(lats[i][j], lons[i][j], elevs[i][j]));
+         Location loc(Util::MV, Util::MV, Util::MV);
+         iParameterFile->getNearestLocation(0, Location(lats[i][j], lons[i][j], elevs[i][j]), loc);
          elevs[i][j] = loc.elev();
       }
    }
@@ -29,6 +30,6 @@ bool CalibratorAltitude::calibrateCore(File& iFile, const ParameterFile* iParame
 
 std::string CalibratorAltitude::description() {
    std::stringstream ss;
-   ss << Util::formatDescription("-c altitude", "Changes the altitudes in the file to the altitudes in the parameter file.") << std::endl;
+   ss << Util::formatDescription("-c altitude", "Changes the altitudes in the file to the altitudes in the parameter file. If the file does not have an altitude field, then a new one is not created.") << std::endl;
    return ss.str();
 }
