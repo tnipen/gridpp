@@ -8,9 +8,11 @@ env:
 
 before_install:
  - sudo apt-get update -qq
- - sudo apt-get install ubuntu-dev-tools libgsl0-dev libblas-dev
- - sudo pip install cpp-coveralls
+ - sudo apt-get install libgsl0-dev libblas-dev
+ - sudo apt-get install libboost-all-dev
+ - sudo apt-get install netcdf-bin libnetcdf-dev
  - sudo apt-get install libgtest-dev
+ - sudo pip install cpp-coveralls
 
 install:
  - make test
