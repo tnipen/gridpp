@@ -15,7 +15,7 @@ before_install:
  - sudo apt-get install libgtest-dev
  - sudo pip install cpp-coveralls
 
-install:
+build:
  - make test
  - make
 
