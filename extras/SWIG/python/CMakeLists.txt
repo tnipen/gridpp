@@ -6,7 +6,7 @@ if(SWIG_VERSION GREATER_EQUAL 4)
 endif()
 set_source_files_properties(../${PROJECT_NAME}.i PROPERTIES CPLUSPLUS ON)
 include_directories(../../include)
-include_directories(${NUMPY_INCLUDE_DIR})
+include_directories(${PYTHON_INCLUDE_DIR})
 
 # Add swig module
 #set(CMAKE_SWIG_FLAGS -interface _pygridpp)

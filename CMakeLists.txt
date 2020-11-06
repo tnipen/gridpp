@@ -8,8 +8,9 @@ project(gridpp)
 string(REGEX REPLACE "^.+define GRIDPP_VERSION \"([^\n]+)\".+" "\\1" PROJECT_VERSION ${VERSION0})
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-find_package(Numpy)
-message(${NUMPY_INCLUDE_DIR})
+#find_package(Numpy)
+find_package(PythonLibs)
+message(${PYTHON_INCLUDE_DIRS})
 
 # Set compiler flags
 enable_language(CXX)
