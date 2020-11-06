@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
+# find_package(Python REQUIRED COMPONENTS NumPy)
+#find_package(PythonLibs)
 
 # Determine gridpp version
 file (READ "${CMAKE_CURRENT_SOURCE_DIR}/include/gridpp.h" VERSION0)
@@ -6,6 +8,8 @@ project(gridpp)
 string(REGEX REPLACE "^.+define GRIDPP_VERSION \"([^\n]+)\".+" "\\1" PROJECT_VERSION ${VERSION0})
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+find_package(Numpy)
+message(${NUMPY_INCLUDE_DIR})
 
 # Set compiler flags
 enable_language(CXX)

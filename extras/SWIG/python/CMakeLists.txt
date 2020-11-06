@@ -6,6 +6,7 @@ if(SWIG_VERSION GREATER_EQUAL 4)
 endif()
 set_source_files_properties(../${PROJECT_NAME}.i PROPERTIES CPLUSPLUS ON)
 include_directories(../../include)
+include_directories(${NUMPY_INCLUDE_DIR})
 
 # Add swig module
 #set(CMAKE_SWIG_FLAGS -interface _pygridpp)
@@ -13,6 +14,9 @@ swig_add_library(gridpp TYPE SHARED LANGUAGE python SOURCES ../${PROJECT_NAME}.i
 #swig_link_libraries(gridpp ${PROJECT_NAME} ${PYTHON_LIBRARIES})
 swig_link_libraries(gridpp gridpp ${PYTHON_LIBRARIES})
 #set_property(TARGET _pygridpp PROPERTY OUTPUT_NAME gridpp)
+#set_property(TARGET _pygridpp PROPERTY OUTPUT_NAME gridpp)
+#message(${PYTHON_INCLUDE_DIRS})
+#target_include_directories(gridpp PRIVATE ${PYTHON_INCLUDE_DIRS})
 
 # Files to install with Python
 set(PYTHON_INSTALL_FILES
