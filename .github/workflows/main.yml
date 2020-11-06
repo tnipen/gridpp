@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Publish
+name: Build
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -25,28 +25,6 @@ jobs:
       - name: configure
         run: mkdir build && cd build && cmake -DBUILD_R=no ..
       - name: build
-        run: cd build && VERBOSE=1 make build-python && VERBOSE=1 make package-python
-      # - name: test
-      #   run: nosetests3
-      - name: Build wheel
-        uses: RalfG/python-wheels-manylinux-build@v0.2.2-manylinux1_x86_64
-        with:
-          # python-versions: 'cp36-cp36m cp37-cp37m'
-          python-versions: 'cp36-cp36m'
-          # build-requirements: 'cython numpy'
-          system-packages: 'armadillo armadillo-devel gsl gsl-devel boost-devel'
-          package-path: 'build/extras/python/'
-          # pip-wheel-args: '--no-deps'
-      - name: pypi-publish
-        uses: pypa/gh-action-pypi-publish@v1.2.2
-        with:
-          # PyPI user
-          user: tnipen
-          # Password for your PyPI user or an access token
-          password: ${{ secrets.pypi_test_password }}
-          # The repository URL to use
-          repository_url: https://test.pypi.org/legacy/
-    # The target directory for distribution
-          packages_dir: build/extras/python/dist/
-    # Check metadata before uploading
-    #verify_metadata: # optional, default is true
+        run: cd build && VERBOSE=1 make develop-python-user
+      - name: test
+        run: nosetests3
