@@ -30,4 +30,4 @@ jobs:
       - name: build
         run: cd build && VERBOSE=1 make develop-python-user
       - name: test
-        run: nosetests3
+        run: nosetests
