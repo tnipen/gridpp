@@ -61,7 +61,7 @@ class BilinearTest(unittest.TestCase):
                     lons[i, j] = lons0[i, j] * np.cos(angle) - lats0[i, j] * np.sin(angle)
                     lats[i, j] = lons0[i, j] * np.sin(angle) + lats0[i, j] * np.cos(angle)
             if 0:
-                import matplotlib.pylab as mpl
+                # import matplotlib.pylab as mpl
                 mpl.plot(lons, lats, '-ko')
                 mpl.plot(lons_p, lats_p, '-ro')
                 mpl.show()
