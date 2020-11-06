@@ -21,9 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: dependencies
-        run: sudo apt update -qq && sudo apt install swig libboost-dev libarmadillo8 libarmadillo-dev cmake netcdf-bin libnetcdf-dev libgsl-dev python3-setuptools python3-nose
+        run: sudo apt update -qq && sudo apt install swig libboost-dev libarmadillo8 libarmadillo-dev cmake netcdf-bin libnetcdf-dev libgsl-dev python3-setuptools
       - name: configure
         run: mkdir build && cd build && cmake -DBUILD_R=no ..
+      - name: build_dependencies
+        run: pip3 install numpy nose --user
       - name: build
         run: cd build && VERBOSE=1 make develop-python-user
       - name: test
