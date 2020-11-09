@@ -26,9 +26,5 @@ jobs:
         run: mkdir build && cd build && cmake -DBUILD_R=no ..
       - name: build
         run: cd build && VERBOSE=1 make develop-python-user
-      - name: remove_dependencies
-        run: sudo apt remove python3-numpy
-      - name: build_dependencies
-        run: pip3 install numpy --user -U
       - name: test
         run: nosetests3
