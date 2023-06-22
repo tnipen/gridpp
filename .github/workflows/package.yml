@@ -54,7 +54,7 @@ jobs:
           CIBW_BEFORE_ALL_MACOS: brew reinstall gcc lapack gsl boost armadillo && ls /usr/local/opt/armadillo && ls /usr/local/opt && ln -s /usr/local/bin/gcc-13 /usr/local/bin/gcc && ln -s /usr/local/bin/g++-13 /usr/local/bin/g++ && ls /usr/local/bin/gcc* && which gcc && which g++
           CIBW_BEFORE_ALL_WINDOWS: choco install -y lapack-devel
           CIBW_TEST_COMMAND: >
-              python {project}/swig/python-packaging/test.py
+              python {project}/tests/check_installation.py
         #    ...
         # with:
         #   package-dir: .
