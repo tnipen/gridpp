@@ -29,6 +29,7 @@ class CustomInstall(install):
         # self.do_egg_install()
         orig.install.run(self)
 
+# NOTE: We need c++11 because manylinux2014 has gcc 4.8, which preceedes c++14
 
 module = Extension('_gridpp',
         sources=glob.glob('src/api/*.cpp') + glob.glob('src/api/*.c') + ['gridppPYTHON_wrap.cxx'],
