@@ -50,8 +50,8 @@ jobs:
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_BUILD: cp36-manylinux_x86_64 cp36-win_amd64 cp36-macosx_x86_64
-          CIBW_BEFORE_ALL_LINUX: yum install -y lapack-devel gsl-devel boost-devel armadillo-devel && ls /usr/include
-          CIBW_BEFORE_ALL_MACOS: brew reinstall gcc lapack gsl boost armadillo && ls /usr/local/opt/armadillo && ls /usr/local/opt && ln -s /usr/local/bin/gcc-13 /usr/local/bin/gcc && ln -s /usr/local/bin/g++-13 /usr/local/bin/g++ && ls /usr/local/bin/gcc* && which gcc && which g++
+          CIBW_BEFORE_ALL_LINUX: yum install -y lapack-devel gsl-devel armadillo-devel && curl -L -O https://boostorg.jfrog.io/artifactory/main/release/1.74.0/source/boost_1_74_0.tar.gz && tar -xvf boost_1_74_0.tar.gz && cd boost_1_74_0; cp -r boost /usr/include
+          CIBW_BEFORE_ALL_MACOS: brew reinstall gcc lapack gsl boost armadillo && ls /usr/local/bin/ && ls /usr/local/opt/armadillo && ls /usr/local/opt && ln -s /usr/local/bin/gcc-14 /usr/local/bin/gcc && ln -s /usr/local/bin/g++-14 /usr/local/bin/g++ && ls /usr/local/bin/gcc* && which gcc && which g++
           CIBW_BEFORE_ALL_WINDOWS: choco install -y lapack-devel
           CIBW_TEST_COMMAND: >
               python {project}/tests/check_installation.py
