@@ -36,7 +36,7 @@ module = Extension('_gridpp',
         extra_compile_args="-O3 -fPIC -fopenmp -fopenmp -std=c++11".split(),
         extra_link_args="-O3 -fPIC -fopenmp -fopenmp -std=c++11".split(),
         library_dirs=["/usr/lib64", "/usr/local/lib", "/usr/local/opt/armadillo/lib"],
-        include_dirs=['./include', np.get_include(), '/usr/local/opt/armadillo/include']
+        include_dirs=['./include', np.get_include(), '/usr/local/opt/armadillo/include',  "/usr/include", "/usr/local/include"]
 )
 
 setup (
