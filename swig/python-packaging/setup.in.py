@@ -7,7 +7,7 @@ from distutils.core import setup, Extension
 from setuptools import setup, Extension
 import glob
 import itertools
-import numpy
+import numpy as np
 
 __version__ = '${PROJECT_VERSION}'
 
@@ -33,10 +33,10 @@ class CustomInstall(install):
 module = Extension('_gridpp',
         sources=glob.glob('src/api/*.cpp') + glob.glob('src/api/*.c') + ['gridppPYTHON_wrap.cxx'],
         libraries=["armadillo"],
-        extra_compile_args="${CMAKE_CXX_FLAGS_RELEASE} ${OpenMP_CXX_FLAGS} -std=c++${CMAKE_CXX_STANDARD}".split(),
-        extra_link_args="${CMAKE_CXX_FLAGS_RELEASE} ${OpenMP_CXX_FLAGS} -std=c++${CMAKE_CXX_STANDARD}".split(),
-        library_dirs=["/usr/lib64"],
-        include_dirs=['./include', numpy.get_include()]
+        extra_compile_args="-O3 -fPIC -fopenmp -fopenmp -std=c++11".split(),
+        extra_link_args="-O3 -fPIC -fopenmp -fopenmp -std=c++11".split(),
+        library_dirs=["/usr/lib64", "/usr/local/lib", "/usr/local/opt/armadillo/lib"],
+        include_dirs=['./include', np.get_include(), '/usr/local/opt/armadillo/include']
 )
 
 setup (
@@ -66,7 +66,7 @@ setup (
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
         'Intended Audience :: Science/Research',
@@ -83,6 +83,9 @@ setup (
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
 
     # What does your project relate to?
@@ -100,7 +103,7 @@ setup (
     # However, since the earliest precompiled numpy versions have been used when compiling gridpp,
     # it is unlikely the user will have an older version of numpy
     # install_requires=['numpy<=1.12.1; python_version < "3"'],
-    install_requires=['numpy'],
+    # install_requires=['numpy'],
 
     test_suite="gridpp.tests",
     ext_modules = [module],
