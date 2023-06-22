@@ -6,7 +6,7 @@ include(${SWIG_USE_FILE})
 option(BUILD_PYTHON "Build Python SWIG module" ON)
 if(BUILD_PACKAGE)
     add_subdirectory(python-packaging)
-else
+else()
     if(BUILD_PYTHON)
         add_subdirectory(python)
     endif()

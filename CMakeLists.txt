@@ -11,7 +11,7 @@ option(BUILD_PACKAGE "Build package" OFF)
 
 if (BUILD_PACKAGE)
 
-else
+else()
     # Boost 1.75 and above requires c++14 for the geometry library. For creating the python packages on
     # CentOS5, c++11 is more readily available, so this is preferred.
     find_package(Boost REQUIRED)
