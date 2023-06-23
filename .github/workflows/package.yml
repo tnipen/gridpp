@@ -31,7 +31,7 @@ jobs:
     strategy:
       matrix:
         # os: [ubuntu-20.04, windows-2019, macos-11]
-        os: [macos-11]
+        os: [ubuntu-20.04]
 
     steps:
       - uses: actions/checkout@v3
@@ -52,11 +52,12 @@ jobs:
           # Use boost 1_72, since this allows c++11. We need c++11, since manylinux2014 only has gcc 4.8
           # Can't use boost 1.53 (default on linux) because it doesn't have rtree functionality
           CIBW_BUILD: cp36-manylinux_x86_64 cp36-win_amd64 cp36-macosx_x86_64
-          CIBW_BEFORE_ALL_LINUX: >
-              yum install -y lapack-devel gsl-devel armadillo-devel &&
-              curl -L -O https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.gz &&
-              tar -xf boost_1_72_0.tar.gz &&
-              cd boost_1_72_0; cp -r boost /usr/include
+          CIBW_BEFORE_ALL_LINUX: |
+              yum install -y lapack-devel gsl-devel armadillo-devel
+              curl -L -O https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.gz
+              tar -xf boost_1_72_0.tar.gz
+              cd boost_1_72_0
+              cp -r boost /usr/include
           CIBW_BEFORE_ALL_MACOS: |
               # Other than the latest version, Brew only has boost 1.76. Therefore we must install boost from source
               brew reinstall gcc lapack gsl armadillo
@@ -64,9 +65,7 @@ jobs:
               tar -xf boost_1_72_0.tar.gz
               cd boost_1_72_0
               cp -r boost /usr/local/include
-              ls /usr/local/bin/
-              ls /usr/local/opt/armadillo
-              ls /usr/local/opt
+              # Link in gcc, otherwise the default Apple compiler will be used, which doesn't support openmp by default
               ln -s /usr/local/bin/gcc-13 /usr/local/bin/gcc
               ln -s /usr/local/bin/g++-13 /usr/local/bin/g++
           CIBW_BEFORE_ALL_WINDOWS: choco install -y lapack-devel
@@ -79,6 +78,29 @@ jobs:
         #   output-dir: wheelhouse
         #   config-file: "{package}/pyproject.toml"
 
-      # - uses: actions/upload-artifact@v3
-      #   with:
-      #     path: ./wheelhouse/*.whl
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: ./wheelhouse/*.whl
+
+  pypi-publish:
+    needs: build_wheels
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    with:
+      repository-url: https://test.pypi.org/legacy/
+    environment:
+      name: pypi
+      url: https://test.pypi.org/p/gridpp
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
+          path: wheelhouse
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        packages-dir: wheelhouse/
+
