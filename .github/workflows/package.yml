@@ -9,6 +9,7 @@ on: [push]
 
 jobs:
   setup:
+      name: Build SWIG wrappers
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
@@ -70,7 +71,6 @@ jobs:
               ln -s /usr/local/bin/g++-13 /usr/local/bin/g++
           CIBW_BEFORE_ALL_WINDOWS: choco install -y lapack-devel
           CIBW_TEST_COMMAND: >
-              python -m pip install numpy &&
               python {project}/tests/check_installation.py
 
       - uses: actions/upload-artifact@v3
