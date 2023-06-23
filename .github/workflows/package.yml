@@ -87,14 +87,8 @@ jobs:
     needs: build_wheels
     name: Upload release to PyPI
     runs-on: ubuntu-latest
-    with:
-      repository-url: https://test.pypi.org/legacy/
-    environment:
-      name: pypi
-      url: https://test.pypi.org/p/gridpp
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-
     steps:
       - uses: actions/download-artifact@v3
         with:
@@ -102,5 +96,8 @@ jobs:
           path: wheelhouse
       - name: Publish
         uses: pypa/gh-action-pypi-publish@release/v1
-        packages-dir: wheelhouse/
-
+        with:
+          packages-dir: wheelhouse/
+          name: pypi
+          url: https://test.pypi.org/p/gridpp
+          repository-url: https://test.pypi.org/legacy/
