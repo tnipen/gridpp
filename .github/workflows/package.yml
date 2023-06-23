@@ -57,17 +57,17 @@ jobs:
               curl -L -O https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.gz &&
               tar -xf boost_1_72_0.tar.gz &&
               cd boost_1_72_0; cp -r boost /usr/include
-          CIBW_BEFORE_ALL_MACOS: >
+          CIBW_BEFORE_ALL_MACOS: |
               # Other than the latest version, Brew only has boost 1.76. Therefore we must install boost from source
-              brew reinstall gcc lapack gsl armadillo &&
-              curl -L -O https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.gz &&
-              tar -xf boost_1_72_0.tar.gz &&
-              cd boost_1_72_0 &&
-              cp -r boost /usr/local/include &&
-              ls /usr/local/bin/ &&
-              ls /usr/local/opt/armadillo &&
-              ls /usr/local/opt &&
-              ln -s /usr/local/bin/gcc-13 /usr/local/bin/gcc &&
+              brew reinstall gcc lapack gsl armadillo
+              curl -L -O https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.gz
+              tar -xf boost_1_72_0.tar.gz
+              cd boost_1_72_0
+              cp -r boost /usr/local/include
+              ls /usr/local/bin/
+              ls /usr/local/opt/armadillo
+              ls /usr/local/opt
+              ln -s /usr/local/bin/gcc-13 /usr/local/bin/gcc
               ln -s /usr/local/bin/g++-13 /usr/local/bin/g++
           CIBW_BEFORE_ALL_WINDOWS: choco install -y lapack-devel
           CIBW_TEST_COMMAND: >
