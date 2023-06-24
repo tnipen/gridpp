@@ -1,15 +1,13 @@
 name: Packaging
 
-on: [push]
-
-# push:
-#    branches: [ master ]
-#  pull_request:
-#    branches: [ master ]
+on:
+  push:
+    tags:
+      - '*'
 
 jobs:
   setup:
-      name: Build SWIG wrappers
+    name: Build SWIG wrappers
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
@@ -43,9 +41,6 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: my-artifact
-
-      - name: List
-        run: pwd && ls
 
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
@@ -93,6 +88,5 @@ jobs:
           packages-dir: wheelhouse/
           name: pypi
           user: __token__
-          password: ${{ secrets.PYPI_TEST_TOKEN }}
-          url: https://test.pypi.org/p/gridpp
-          repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.PYPI_TOKEN }}
+          url: https://pypi.org/p/gridpp
