@@ -67,6 +67,7 @@ jobs:
               ln -s /usr/local/bin/gcc-13 /usr/local/bin/gcc
               ln -s /usr/local/bin/g++-13 /usr/local/bin/g++
           # CIBW_ENVIRONMENT_MACOS: CC='/usr/local/bin/gcc' LDSHARED='/usr/local/bin/gcc' CXX='/usr/local/bin/g++'
+          CIBW_ENVIRONMENT_MACOS: CFLAGS='-Wnoc++11-narrowing'
           CIBW_BEFORE_ALL_WINDOWS: choco install -y lapack-devel
           CIBW_TEST_COMMAND: >
               python {project}/tests/check_installation.py
