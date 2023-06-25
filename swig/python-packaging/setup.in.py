@@ -8,6 +8,7 @@ from setuptools import setup, Extension
 import glob
 import itertools
 import numpy as np
+import sys
 
 __version__ = '${PROJECT_VERSION}'
 
@@ -29,13 +30,16 @@ class CustomInstall(install):
         # self.do_egg_install()
         orig.install.run(self)
 
-# NOTE: We need c++11 because manylinux2014 has gcc 4.8, which preceedes c++14
+args = []
+if sys.platform != "darwin":
+    args = "-fopenmp -fopenmp".split()
 
+# NOTE: We need c++11 because manylinux2014 has gcc 4.8, which preceedes c++14
 module = Extension('_gridpp',
         sources=glob.glob('src/api/*.cpp') + glob.glob('src/api/*.c') + ['gridppPYTHON_wrap.cxx'],
         libraries=["armadillo"],
-        extra_compile_args="-O3 -fPIC -fopenmp -fopenmp -std=c++11".split(),
-        extra_link_args="-O3 -fPIC -fopenmp -fopenmp -std=c++11".split(),
+        extra_compile_args="-O3 -fPIC -std=c++11".split() + args,
+        extra_link_args="-O3 -fPIC -std=c++11".split() + args,
         library_dirs=["/usr/lib64", "/usr/local/lib", "/usr/local/opt/armadillo/lib"],
         include_dirs=['./include', np.get_include(), '/usr/local/opt/armadillo/include',  "/usr/include", "/usr/local/include"]
 )
