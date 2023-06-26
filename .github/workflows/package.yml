@@ -81,7 +81,6 @@ jobs:
         with:
           name: wheels
           path: ./wheelhouse/*.whl
-          skip_existing: true
 
 
   pypi-publish:
@@ -101,3 +100,4 @@ jobs:
           user: __token__
           password: ${{ secrets.PYPI_TOKEN }}
           url: https://pypi.org/p/gridpp
+          skip_existing: true
