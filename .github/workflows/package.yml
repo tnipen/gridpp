@@ -51,9 +51,11 @@ jobs:
           # CIBW_BUILD: cp36-manylinux_x86_64 cp36-win_amd64 cp36-macosx_x86_64
           # CIBW_BUILD: cp310-macosx_x86_64
           # PyPy compilation on MACOS doesn't work, possibly since there is no available numpy release for this
-          CIBW_SKIP: pp*-macosx* *i686*
+          # Armadillo isn't available for i687 on Centos 7, making compilation more complicated
+          # # Musllinux doesn't use yum as its package manager
+          CIBW_SKIP: pp*-macosx* *i686* *musllinux*
           CIBW_BEFORE_ALL_LINUX: |
-              yum install -y lapack-devel gsl-devel armadillo-devel
+              yum install -y lapack-devel armadillo-devel
               curl -L -O https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.gz
               tar -xf boost_1_72_0.tar.gz
               cd boost_1_72_0
@@ -61,7 +63,7 @@ jobs:
           CIBW_BEFORE_ALL_MACOS: |
               # Other than the latest version, Brew only has boost 1.76. Therefore we must install boost from source
               # brew reinstall gcc lapack gsl armadillo
-              brew reinstall lapack gsl armadillo
+              brew reinstall lapack armadillo
               curl -L -O https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.tar.gz
               tar -xf boost_1_72_0.tar.gz
               cd boost_1_72_0
